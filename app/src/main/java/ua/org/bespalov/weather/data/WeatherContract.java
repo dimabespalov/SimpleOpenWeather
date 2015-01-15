@@ -28,14 +28,12 @@ public class WeatherContract {
     }
     public static final class LocationEntry implements BaseColumns {
         public static final String TABLE_NAME = "location";
-        //Column with the primary key into the location table.
-        public static final String COLUMN_LOC_KEY = "location_id";
         // Location settings
         public static final String COLUMN_LOC_SETTING = "location_setting";
         // Location name as text
         public static final String COLUMN_LOC_NAME = "location_name";
         // Location latitude and longitude (stored as floats)
         public static final String COLUMN_LOC_LAT = "lat";
-        public static final String COLUMN_LOC_LON = "lon";
+        public static final String COLUMN_LOC_LONG = "long";
     }
 }
