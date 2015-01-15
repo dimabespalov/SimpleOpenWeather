@@ -116,6 +116,7 @@ public class TestDb extends AndroidTestCase {
             fail("No values returned :(");
         }
 
+
         // Fantastic.  Now that we have a location, add some weather!
         ContentValues weatherValues = new ContentValues();
         weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationRowId);
@@ -128,6 +129,56 @@ public class TestDb extends AndroidTestCase {
         weatherValues.put(WeatherEntry.COLUMN_SHORT_DESC, "Asteroids");
         weatherValues.put(WeatherEntry.COLUMN_WIND_SPEED, 5.5);
         weatherValues.put(WeatherEntry.COLUMN_WEATHER_ID, 321);
+
+        long weatherRowId = db.insert(WeatherEntry.TABLE_NAME, null, weatherValues);
+        assertTrue(weatherRowId != -1);
+
+        Cursor cursorWeather = db.query(
+                WeatherEntry.TABLE_NAME,
+                null, //leave null to retrieve all columns
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        if (cursorWeather.moveToFirst()){
+            int locationKeyIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_LOC_KEY);
+            int dateIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_DATETEXT);
+            int degreesIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_DEGREES);
+            int humidityIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_HUMIDITY);
+            int pressureIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_PRESSURE);
+            int maxIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_MAX_TEMP);
+            int minIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_MIN_TEMP);
+            int shortDescIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_SHORT_DESC);
+            int windSpeedIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_WIND_SPEED);
+            int weatherIDIndex = cursorWeather.getColumnIndex(WeatherEntry.COLUMN_WEATHER_ID);
+
+            int locationKey = cursorWeather.getInt(locationKeyIndex);
+            String date = cursorWeather.getString(dateIndex);
+            double degrees = cursorWeather.getDouble(degreesIndex);
+            double humidity = cursorWeather.getDouble(humidityIndex);
+            double pressure = cursorWeather.getDouble(pressureIndex);
+            int max = cursorWeather.getInt(maxIndex);
+            int min = cursorWeather.getInt(minIndex);
+            String shortDesc = cursorWeather.getString(shortDescIndex);
+            double windSpeed = cursorWeather.getDouble(windSpeedIndex);
+            int weatherID = cursorWeather.getInt(weatherIDIndex);
+
+            assertEquals(locationKey, locationRowId);
+            assertEquals(date, "20141205");
+            assertEquals(degrees, 1.1);
+            assertEquals(humidity, 1.2);
+            assertEquals(pressure, 1.3);
+            assertEquals(max, 75);
+            assertEquals(min, 65);
+            assertEquals(shortDesc, "Asteroids");
+            assertEquals(windSpeed, 5.5);
+            assertEquals(weatherID, 321);
+        } else {
+            fail("No forecast returned :(");
+        }
 
         dbHelper.close();
     }
