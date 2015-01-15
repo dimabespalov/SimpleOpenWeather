@@ -1,13 +1,19 @@
 package ua.org.bespalov.weather;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
 
 public class MainActivity extends ActionBarActivity {
+
+    private static final String LOG_TAG = MainActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,7 +44,26 @@ public class MainActivity extends ActionBarActivity {
             Intent settingIntent = new Intent(this, SettingsActivity.class);
             startActivity(settingIntent);
         }
+        if (id == R.id.action_location_map) {
+            openPreferredLocationInMap();
+            return true;
+        }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void openPreferredLocationInMap (){
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        String location = sharedPreferences.getString(getString(R.string.pref_location_key),getString(R.string.pref_location_default));
+        Uri geoLocation = new Uri.Builder().scheme("geo")
+                .appendQueryParameter("q", location)
+                .build();
+        Intent locationIntent = new Intent(Intent.ACTION_VIEW);
+        locationIntent.setData(geoLocation);
+        if (locationIntent.resolveActivity(getPackageManager()) != null){
+            startActivity(locationIntent);
+        } else {
+            Log.d(LOG_TAG, "Could not call " + geoLocation + ", no intent");
+        }
     }
 
 }

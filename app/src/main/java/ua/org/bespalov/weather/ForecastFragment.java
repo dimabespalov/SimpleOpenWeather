@@ -1,9 +1,12 @@
 package ua.org.bespalov.weather;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,6 +31,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 
 
@@ -46,6 +50,12 @@ public class ForecastFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
+    }
+
+    @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.forecastfragment, menu);
     }
@@ -54,32 +64,30 @@ public class ForecastFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_refresh){
-            (new FetchWeatherTask()).execute("Kyiv");
+            updateWeather();
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void updateWeather() {
+        FetchWeatherTask weatherTask = new FetchWeatherTask();
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        weatherTask.execute(location);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        /*String[] data; = {
-                "Mon 1/5 - Snow - -4/-1",
-                "Tue 1/6 - Cloudy - -11/-7",
-                "Wed 1/7 - Sunny - -14/-11",
-                "Thu 1/8 - Sunny - -15/-10",
-                "Fri 1/9 - Cloudy - -10/-4",
-                "Sat 1/10 - Sunny - -9/-3",
-                "Sun 1/11 - Snow - -15/-10"
-        };
-
-        List<String> weekForecast = new ArrayList<String>(Arrays.asList(mOpenWeatherMapData));*/
         mForecastAdapter = new ArrayAdapter<String> (
                         getActivity(),
                         R.layout.list_item_forecast,
-                        R.id.list_item_forecast_textview
-        //        ,weekForecast
-        );
-        (new FetchWeatherTask()).execute("Kyiv");
+                        R.id.list_item_forecast_textview,
+                        new ArrayList<String>());
+        FetchWeatherTask weatherTask = new FetchWeatherTask();
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = sharedPreferences.getString(getString(R.string.pref_location_key), getString(R.string.pref_location_default));
+        weatherTask.execute(location);
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
         final ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
@@ -108,7 +116,8 @@ public class ForecastFragment extends Fragment {
             String forecastJsonStr = null;
 
             String modeType = "json";
-            String unitsType = "metric";
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            String unitsType = sharedPreferences.getString(getString(R.string.pref_units_key), getString(R.string.pref_units_metric));
             int numDays = 7;
 
             String FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast/daily?";
