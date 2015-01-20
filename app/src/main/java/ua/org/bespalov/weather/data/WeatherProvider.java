@@ -161,11 +161,31 @@ public class WeatherProvider extends ContentProvider {
                  break;
              }
 
-             /**
-              * TODO YOUR CODE BELOW HERE FOR QUIZ
-              * QUIZ - 4b - Implement Location_ID queries
-              * https://www.udacity.com/course/viewer#!/c-ud853/l-1576308909/e-1675098551/m-1675098552
-              **/
+             case LOCATION: {
+                 retCursor = mOpenHelper.getReadableDatabase().query(
+                         WeatherContract.LocationEntry.TABLE_NAME,
+                         projection,
+                         selection,
+                         selectionArgs,
+                         null,
+                         null,
+                         sortOrder
+                 );
+                 break;
+             }
+
+             case LOCATION_ID: {
+                 retCursor = mOpenHelper.getReadableDatabase().query(
+                         WeatherContract.LocationEntry.TABLE_NAME,
+                         projection,
+                         WeatherContract.LocationEntry._ID + "= '" + ContentUris.parseId(uri) + "'",
+                         null,
+                         null,
+                         null,
+                         sortOrder
+                 );
+                 break;
+             }
 
              default:
                  throw new UnsupportedOperationException("Unknown uri: " + uri);
