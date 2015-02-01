@@ -4,11 +4,20 @@ import android.content.ContentUris;
 import android.net.Uri;
 import android.provider.BaseColumns;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class WeatherContract {
     public static final String CONTENT_AUTHORITY = "ua.org.bespalov.weather";
     public static final Uri BASE_CONTENT_URI = Uri.parse("content://" + CONTENT_AUTHORITY);
     public static final String PATH_WEATHER = "weather";
     public static final String PATH_LOCATION = "location";
+    public static final String DATE_FORMAT = "yyyyMMdd";
+
+    public static String getDbDateString (Date date){
+        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
+        return sdf.format(date);
+    }
 
     public static final class WeatherEntry implements BaseColumns {
         public static final Uri CONTENT_URI = BASE_CONTENT_URI.buildUpon().appendPath(PATH_WEATHER).build();
