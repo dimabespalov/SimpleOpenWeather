@@ -290,11 +290,11 @@ public class TestProvider extends AndroidTestCase {
 
     public void testUpdateAndReadWeather() {
         insertKalamazooData();
-        String newDescription = "Cats and Frogs (don't warn the tadpoles!)";
+        String newDescription = "Cats and Frogs'";
 
         // Make an update to one value.
         ContentValues kalamazooUpdate = new ContentValues();
-        kalamazooUpdate.put(WeatherEntry.COLUMN_SHORT_DESC, newDescription);
+        kalamazooUpdate.put(WeatherEntry.COLUMN_SHORT_DESC, newDescription+"");
 
         mContext.getContentResolver().update(
                 WeatherEntry.CONTENT_URI, kalamazooUpdate, null, null);
@@ -329,11 +329,10 @@ public class TestProvider extends AndroidTestCase {
                 null,
                 null
         );
-
         // Make the same update to the full ContentValues for comparison.
         ContentValues kalamazooAltered = createKalamazooWeatherValues(locationRowId);
         kalamazooAltered.remove(WeatherEntry.COLUMN_HUMIDITY);
-
+        System.out.print(kalamazooAltered.toString());
         TestDb.validateCursor(weatherCursor, kalamazooAltered);
         int idx = weatherCursor.getColumnIndex(WeatherEntry.COLUMN_HUMIDITY);
         assertEquals(-1, idx);

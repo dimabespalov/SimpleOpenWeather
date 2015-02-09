@@ -29,20 +29,16 @@ import java.util.Vector;
 import ua.org.bespalov.weather.data.WeatherContract;
 import ua.org.bespalov.weather.data.WeatherContract.WeatherEntry;
 import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
-import ua.org.bespalov.weather.data.WeatherDbHelper;
-import ua.org.bespalov.weather.data.WeatherProvider;
 
-public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
+public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
     private static final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
-    private ArrayAdapter<String> mForecastAdapter;
     private final Context mContext;
 
-    public FetchWeatherTask(Context context, ArrayAdapter<String> forecastAdapter){
+    public FetchWeatherTask(Context context){
         mContext = context;
-        mForecastAdapter = forecastAdapter;
     }
     @Override
-    protected String[] doInBackground(String... params) {
+    protected Void doInBackground(String... params) {
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
 
@@ -104,44 +100,12 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
             }
         }
         try {
-            return getWeatherDataFromJson(forecastJsonStr, numDays, locationQuery);
+            getWeatherDataFromJson(forecastJsonStr, numDays, locationQuery);
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
         return null;
-    }
-
-    @Override
-    protected void onPostExecute(String[] strings) {
-        mForecastAdapter.clear();
-        for (String str : strings){
-            mForecastAdapter.add(str);
-        }
-        super.onPostExecute(strings);
-    }
-
-    /* The date/time conversion code is going to be moved outside the asynctask later,
-     * so for convenience we're breaking it out into its own method now.
-     */
-    private String getReadableDateString(long time){
-        // Because the API returns a unix timestamp (measured in seconds),
-        // it must be converted to milliseconds in order to be converted to valid date.
-        Date date = new Date(time * 1000);
-        SimpleDateFormat format = new SimpleDateFormat("E, MMM d");
-        return format.format(date).toString();
-    }
-
-    /**
-     * Prepare the weather high/lows for presentation.
-     */
-    private String formatHighLows(double high, double low) {
-        // For presentation, assume the user doesn't care about tenths of a degree.
-        long roundedHigh = Math.round(high);
-        long roundedLow = Math.round(low);
-
-        String highLowStr = roundedHigh + "/" + roundedLow;
-        return highLowStr;
     }
 
     /**
@@ -151,7 +115,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
      * Fortunately parsing is easy:  constructor takes the JSON string and converts it
      * into an Object hierarchy for us.
      */
-    private String[] getWeatherDataFromJson(String forecastJsonStr, int numDays, String locationString)
+    private void getWeatherDataFromJson(String forecastJsonStr, int numDays, String locationString)
             throws JSONException {
         final String OWM_LOC = "city";
         final String OWM_LOC_NAME = "name";
@@ -190,7 +154,6 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
 
         Vector<ContentValues> cVVector = new Vector<ContentValues>(weatherArray.length());
 
-        String[] resultStrs = new String[numDays];
         for(int i = 0; i < weatherArray.length(); i++) {
             // For now, using the format "Day, description, hi/low"
             long dateTime;
@@ -231,7 +194,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
             ContentValues weatherValues = new ContentValues();
 
             weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationID);
-            weatherValues.put(WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime)));
+            weatherValues.put(WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime*1000L)));
             weatherValues.put(WeatherEntry.COLUMN_HUMIDITY, humidity);
             weatherValues.put(WeatherEntry.COLUMN_PRESSURE, pressure);
             weatherValues.put(WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
@@ -250,18 +213,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
                         .bulkInsert(WeatherEntry.CONTENT_URI, cvArray);
                 Log.v(LOG_TAG, "inserted " + rowsInserted + " rows of weather data");
             }
-
-            String highAndLow = formatHighLows(high, low);
-            String day = getReadableDateString(dateTime);
-            resultStrs[i] = day + " - " + description + " - " + highAndLow;
         }
-
-        for(String str : resultStrs){
-            Log.v(LOG_TAG, "Forecast entry " + str);
-        }
-
-
-        return resultStrs;
     }
 
     private long addLocation (String locationSetting, String locName, double lat, double lon){

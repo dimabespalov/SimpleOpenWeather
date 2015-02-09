@@ -24,12 +24,14 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.media.UnsupportedSchemeException;
 import android.net.Uri;
+import android.util.Log;
 
 public class WeatherProvider extends ContentProvider {
 
      // The URI Matcher used by this content provider.
      private static final UriMatcher sUriMatcher = buildUriMatcher();
-     private WeatherDbHelper mOpenHelper;
+    private static final String LOG_TAG = "Weather Provider";
+    private WeatherDbHelper mOpenHelper;
 
      private static final int WEATHER = 100;
      private static final int WEATHER_WITH_LOCATION = 101;
@@ -98,7 +100,7 @@ public class WeatherProvider extends ContentProvider {
              selectionArgs = new String[]{locationSetting, startDate};
              selection = sLocationSettingWithStartDateSelection;
          }
-
+         Log.d(LOG_TAG, "Weather with location");
          return sWeatherByLocationSettingQueryBuilder.query(mOpenHelper.getReadableDatabase(),
                  projection,
                  selection,
@@ -113,11 +115,11 @@ public class WeatherProvider extends ContentProvider {
              Uri uri, String[] projection, String sortOrder) {
          String locationSetting = WeatherContract.WeatherEntry.getLocationSettingFromUri(uri);
          String date = WeatherContract.WeatherEntry.getDateFromUri(uri);
-
+         Log.d(LOG_TAG, "Weather with location and date");
          return sWeatherByLocationSettingQueryBuilder.query(mOpenHelper.getReadableDatabase(),
                  projection,
                  sLocationSettingAndDaySelection,
-                 new String[]{locationSetting, date},
+                 new String[] {locationSetting, date},
                  null,
                  null,
                  sortOrder
