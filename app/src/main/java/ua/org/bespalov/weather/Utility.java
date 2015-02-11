@@ -29,19 +29,55 @@ public class Utility {
                 .equals(context.getString(R.string.pref_units_metric));
     }
 
-    static String formatTemperature(double temperature, boolean isMetric) {
+    static String formatTemperature(Context context, double temperature, boolean isMetric) {
         double temp;
         if ( !isMetric ) {
             temp = 9*temperature/5+32;
         } else {
             temp = temperature;
         }
-        return String.format("%.0f", temp);
+        return context.getString(R.string.format_temperature, temp);
     }
 
     static String formatDate(String dateString) {
         Date date = WeatherContract.getDateFromDb(dateString);
         return DateFormat.getDateInstance().format(date);
+    }
+
+    static String formatHumidity(Context context, double humidity){
+        return context.getString(R.string.format_humidity, humidity);
+    }
+
+    static String formatWind(Context context, double windSpeed, double degrees){
+        int resourse = R.string.format_wind_metric;
+        if (!Utility.isMetric(context)){
+            windSpeed = .621371192237334f * windSpeed;
+            resourse = R.string.format_wind_imperial;
+        }
+
+        String direction = "Unknown";
+        if ( degrees <= 22.5 || degrees > 338.5){
+            direction = "N";
+        } else if (degrees > 22.5 && degrees <= 67.5){
+            direction = "NE";
+        } else if (degrees > 67.5 && degrees <= 112.5){
+            direction = "E";
+        } else if (degrees > 112.5 && degrees <= 157.5){
+            direction = "SE";
+        } else if (degrees > 157.5 && degrees <= 202.5) {
+            direction = "S";
+        } else if (degrees >= 202.5 && degrees <= 247.5) {
+            direction = "SW";
+        } else if (degrees >= 247.5 && degrees <= 292.5) {
+            direction = "W";
+        } else if (degrees >= 292.5 || degrees <= 338.5) {
+            direction = "NW";
+        }
+        return context.getString(resourse, windSpeed, direction);
+    }
+
+    static String formatPressure (Context context, double pressure){
+        return context.getString(R.string.format_pressure, pressure);
     }
 
     /**
@@ -147,5 +183,60 @@ public class Utility {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public static int getIconResourceForWeatherCondition(int weatherId) {
+        if (weatherId >= 200 && weatherId <= 232) {
+            return R.drawable.ic_storm;
+        } else if (weatherId >= 300 && weatherId <= 321) {
+            return R.drawable.ic_light_rain;
+        } else if (weatherId >= 500 && weatherId <= 504) {
+            return R.drawable.ic_rain;
+        } else if (weatherId == 511) {
+            return R.drawable.ic_snow;
+        } else if (weatherId >= 520 && weatherId <= 531) {
+            return R.drawable.ic_rain;
+        } else if (weatherId >= 600 && weatherId <= 622) {
+            return R.drawable.ic_snow;
+        } else if (weatherId >= 701 && weatherId <= 761) {
+            return R.drawable.ic_fog;
+        } else if (weatherId == 761 || weatherId == 781) {
+            return R.drawable.ic_storm;
+        } else if (weatherId == 800) {
+            return R.drawable.ic_clear;
+        } else if (weatherId == 801) {
+            return R.drawable.ic_light_clouds;
+        } else if (weatherId >= 802 && weatherId <= 804) {
+            return R.drawable.ic_cloudy;
+        }
+        return -1;
+    }
+
+    public static int getArtResourceForWeatherCondition(int weatherId) {
+
+        if (weatherId >= 200 && weatherId <= 232) {
+            return R.drawable.art_storm;
+        } else if (weatherId >= 300 && weatherId <= 321) {
+            return R.drawable.art_light_rain;
+        } else if (weatherId >= 500 && weatherId <= 504) {
+            return R.drawable.art_rain;
+        } else if (weatherId == 511) {
+            return R.drawable.art_snow;
+        } else if (weatherId >= 520 && weatherId <= 531) {
+            return R.drawable.art_rain;
+        } else if (weatherId >= 600 && weatherId <= 622) {
+            return R.drawable.art_snow;
+        } else if (weatherId >= 701 && weatherId <= 761) {
+            return R.drawable.art_fog;
+        } else if (weatherId == 761 || weatherId == 781) {
+            return R.drawable.art_storm;
+        } else if (weatherId == 800) {
+            return R.drawable.art_clear;
+        } else if (weatherId == 801) {
+            return R.drawable.art_light_clouds;
+        } else if (weatherId >= 802 && weatherId <= 804) {
+            return R.drawable.art_clouds;
+        }
+        return -1;
     }
 }

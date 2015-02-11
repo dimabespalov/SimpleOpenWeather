@@ -24,4 +24,13 @@
     <string name="format_full_friendly_date">
         <xliff:g id="day_of_week">%1$s</xliff:g>, <xliff:g id="date">%2$s</xliff:g>
     </string>
+    <string name="format_temperature"><xliff:g id="temp">"%.0f"</xliff:g>\u00B0</string>
+    <string name="format_humidity">Humidity: <xliff:g id="humidity">"%.0f"</xliff:g>%%</string>
+    <string name="format_wind_metric">Wind:
+        <xliff:g id="wind_speed">%1$.0f</xliff:g> km/H, <xliff:g id="date">%2$s</xliff:g>
+    </string>
+    <string name="format_wind_imperial">Wind:
+        <xliff:g id="wind_speed">%1$.0f</xliff:g> mph, <xliff:g id="date">%2$s</xliff:g>
+    </string>
+    <string name="format_pressure">Pressure: <xliff:g id="pressure">"%.0f"</xliff:g> hPa</string>
 </resources>
