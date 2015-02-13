@@ -8,14 +8,23 @@ import android.view.Menu;
 import android.view.MenuItem;
 
 public class DetailActivity extends ActionBarActivity {
+    public static final String DATE_KEY = "date";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
         if (savedInstanceState == null) {
+            String dateString = getIntent().getStringExtra(DATE_KEY);
+
+            Bundle args = new Bundle();
+            args.putString(DATE_KEY, dateString);
+
+            DetailFragment detailFragment = new DetailFragment();
+            detailFragment.setArguments(args);
+
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new DetailFragment())
+                    .add(R.id.weather_detail_container, detailFragment)
                     .commit();
         }
     }

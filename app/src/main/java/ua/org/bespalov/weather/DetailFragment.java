@@ -3,9 +3,9 @@ package ua.org.bespalov.weather;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.Image;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -24,7 +24,7 @@ import android.widget.TextView;
 import ua.org.bespalov.weather.data.WeatherContract.WeatherEntry;
 import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
 
-public class DetailFragment extends android.support.v4.app.Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
+public class DetailFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
     private static final int FORECAST_LOADER = 0;
     private static final String[] FORECAST_COLUMNS = {
             WeatherEntry.TABLE_NAME + "." + WeatherEntry._ID,
@@ -49,7 +49,7 @@ public class DetailFragment extends android.support.v4.app.Fragment implements L
     private ShareActionProvider mShareActionProvider;
     private String mLocation;
     private String mForecast;
-
+    private String mDateStr;
     private TextView mFriendlyDateView;
     private TextView mDateView;
     private TextView mHighTempView;
@@ -71,26 +71,16 @@ public class DetailFragment extends android.support.v4.app.Fragment implements L
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        if (mLocation != null && !mLocation.equals(Utility.getPreferredLocation(getActivity()))){
-            getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        Bundle args = getArguments();
+        if (args != null){
+            mDateStr = args.getString(DetailActivity.DATE_KEY);
         }
-    }
-
-    @Override
-    public void onActivityCreated(Bundle savedInstanceState) {
-        getLoaderManager().initLoader(DETAIL_LOADER, null, this);
-        mContext = getActivity();
         if (savedInstanceState != null) {
             mLocation = savedInstanceState.getString(LOCATION_KEY);
         }
-        super.onActivityCreated(savedInstanceState);
-    }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_detail, container, false);
         mFriendlyDateView = (TextView) rootView.findViewById(R.id.detail_dayname_textview);
         mDateView = (TextView) rootView.findViewById(R.id.detail_date_textview);
@@ -104,6 +94,30 @@ public class DetailFragment extends android.support.v4.app.Fragment implements L
         return rootView;
     }
 
+    @Override
+    public void onActivityCreated(Bundle savedInstanceState) {
+        getLoaderManager().initLoader(DETAIL_LOADER, null, this);
+        mContext = getActivity();
+        if (savedInstanceState != null) {
+            mLocation = savedInstanceState.getString(LOCATION_KEY);
+        }
+        Bundle args = getArguments();
+        if (args != null && args.containsKey(DetailActivity.DATE_KEY)){
+            getLoaderManager().initLoader(DETAIL_LOADER, null, this);
+        }
+        super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Bundle args = getArguments();
+        if (args != null && args.containsKey(DetailActivity.DATE_KEY) &&
+                mLocation != null && !mLocation.equals(Utility.getPreferredLocation(getActivity()))){
+            getLoaderManager().restartLoader(DETAIL_LOADER, null, this);
+        }
+    }
+
     private Intent createShareForecastIntent(){
         Intent shareIntent = new Intent(Intent.ACTION_SEND)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET)
@@ -111,26 +125,25 @@ public class DetailFragment extends android.support.v4.app.Fragment implements L
                 .putExtra(Intent.EXTRA_TEXT, mForecast + FORECAST_SHARE_HASHTAG);
         return shareIntent;
     }
+
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.detailfragment, menu);
         MenuItem shareItem = menu.findItem(R.id.action_share);
-        ShareActionProvider mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(shareItem);
+        mShareActionProvider = (ShareActionProvider) MenuItemCompat.getActionProvider(shareItem);
         if (mShareActionProvider != null) {
             mShareActionProvider.setShareIntent(createShareForecastIntent());
         } else {
             Log.d(LOG_TAG, "Share Action Provider is null?");
         }
-
         super.onCreateOptionsMenu(menu, inflater);
     }
 
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        String date = getActivity().getIntent().getStringExtra(Intent.EXTRA_TEXT);
+        mLocation = Utility.getPreferredLocation(getActivity());
         Uri weatherForLocationAndDateUri = WeatherEntry.buildWeatherLocationWithDate(
-                Utility.getPreferredLocation(getActivity()), date
-        );
+               mLocation, mDateStr);
         Log.d(LOG_TAG, weatherForLocationAndDateUri.toString());
         return new CursorLoader(
                 getActivity(),

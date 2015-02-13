@@ -5,4 +5,8 @@
         <!-- Customize your theme here. -->
     </style>
 
+    <style name="SelectedItemColored">
+        <item name="android:choiceMode">singleChoice</item>
+    </style>
+
 </resources>

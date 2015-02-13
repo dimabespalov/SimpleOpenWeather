@@ -1,16 +1,14 @@
 package ua.org.bespalov.weather;
 
-import android.content.Intent;
+import android.app.Activity;
+
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
-
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v4.widget.SimpleCursorAdapter;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -19,12 +17,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.Date;
 
 import ua.org.bespalov.weather.data.WeatherContract;
@@ -32,9 +26,20 @@ import ua.org.bespalov.weather.data.WeatherContract.WeatherEntry;
 import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
 
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
+    OnListItemClickedListener mCallback;
+
+    public interface OnListItemClickedListener{
+        public void onListItemClicked(String dateString);
+    }
+
     private static final int FORECAST_LOADER = 0;
+    private static final String POSITION_KEY = "position";
     private static final String LOG_TAG = "ForecastFragment";
     private String mLocation;
+    private int mPosition = ListView.INVALID_POSITION;
+    private ListView mListView;
+    private Bundle mSavedInstanceState;
+    private ForecastAdapter mForecastAdapter;
 
     // For the forecast view we're showing only a small subset of the stored data.
     // Specify the columns we need.
@@ -63,9 +68,26 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public static final int COL_WEATHER_ID = 5;
     public static final int COL_LOCATION_SETTING = 6;
 
-    ForecastAdapter mForecastAdapter;
-
     public ForecastFragment() {
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        if (mPosition != ListView.INVALID_POSITION){
+            outState.putInt(POSITION_KEY, mPosition);
+        }
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        try{
+            mCallback = (OnListItemClickedListener) activity;
+        } catch (ClassCastException e){
+            throw new ClassCastException(activity.toString() +
+                    "must implement OnListItemClickedListener");
+        }
     }
 
     @Override
@@ -111,21 +133,24 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         mForecastAdapter = new ForecastAdapter(getActivity(), null, 0);
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        final ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-        listView.setAdapter(mForecastAdapter);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+
+        mListView = (ListView) rootView.findViewById(R.id.listview_forecast);
+        mListView.setAdapter(mForecastAdapter);
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 ForecastAdapter adapter = (ForecastAdapter) parent.getAdapter();
                 Cursor cursor = adapter.getCursor();
-                if (cursor != null && cursor.moveToPosition(position)){
-                    String dateString = cursor.getString(COL_WEATHER_DATE);
-                    Intent intent = new Intent(getActivity(), DetailActivity.class)
-                            .putExtra(Intent.EXTRA_TEXT, dateString);
-                    startActivity(intent);
+                if (cursor != null && cursor.moveToPosition(position)) {
+                    mPosition = position;
+                    String dateString = cursor.getString(ForecastFragment.COL_WEATHER_DATE);
+                    mCallback.onListItemClicked(dateString);
                 }
             }
         });
+        if (savedInstanceState != null && savedInstanceState.containsKey(POSITION_KEY)){
+            mPosition = savedInstanceState.getInt(POSITION_KEY);
+        }
         return rootView;
     }
 
@@ -150,8 +175,11 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         data.moveToFirst();
-//        Log.d(LOG_TAG, "SwapCursor " + data.getString(1));
         mForecastAdapter.swapCursor(data);
+        if (mPosition != ListView.INVALID_POSITION){
+            mListView.smoothScrollToPosition(mPosition);
+            mListView.setItemChecked(mPosition, true);
+        }
     }
 
     @Override
