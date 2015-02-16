@@ -9,7 +9,7 @@
     <string name="title_activity_detail">DetailActivity</string>
     <string name="pref_location_label">Location</string>
     <string name="pref_location_key" translatable="false">location</string>
-    <string name="pref_location_default" translatable="false">94043</string>
+    <string name="pref_location_default" translatable="false">Kyiv</string>
     <string name="pref_units_label">Temperature Units</string>
     <string name="pref_units_key" translatable="false">units</string>
     <string name="pref_units_metric">Metric</string>
