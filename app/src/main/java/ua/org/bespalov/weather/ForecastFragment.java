@@ -27,6 +27,7 @@ import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
 
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
     OnListItemClickedListener mCallback;
+    private boolean mUseTodayLayout;
 
     public interface OnListItemClickedListener{
         public void onListItemClicked(String dateString);
@@ -127,12 +128,19 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         weatherTask.execute(Utility.getPreferredLocation(getActivity()));
     }
 
+    public void setUseTodayLayout (boolean useTodayLayout){
+        mUseTodayLayout = useTodayLayout;
+        if (mForecastAdapter != null){
+            mForecastAdapter.setUseTodayLayout(useTodayLayout);
+        }
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         mForecastAdapter = new ForecastAdapter(getActivity(), null, 0);
+        mForecastAdapter.setUseTodayLayout(mUseTodayLayout);
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-
 
         mListView = (ListView) rootView.findViewById(R.id.listview_forecast);
         mListView.setAdapter(mForecastAdapter);

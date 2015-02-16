@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="grey">#ffcccccc</color>
-    <color name="light_blue">#ff00e2ff</color>
+    <color name="light_blue">#ff64c2f4</color>
+    <color name="blue">#ff1ca8f4</color>
+    <color name="dark_blue">#0288D1</color>
+    <color name="white">#ffffffff</color>
+    <color name="grey_text">#646464</color>
 </resources>

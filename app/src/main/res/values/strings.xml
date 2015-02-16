@@ -17,9 +17,9 @@
     <string name="action_showlocation_map">Show location</string>
     <string name="action_share">Share</string>
     <!-- Date label when displaying today's weather forecast [CHAR LIMIT=20] -->
-    <string name="today">Today</string>
+    <string name="today" translatable="true">Today</string>
     <!-- Date label when displaying tomorrow's weather forecast [CHAR LIMIT=20] -->
-    <string name="tomorrow">Tomorrow</string>
+    <string name="tomorrow" translatable="true">Tomorrow</string>
     <!-- Date format for displaying day of week and date (i.e. Mon Jun 1) [CHAR LIMIT=20] -->
     <string name="format_full_friendly_date">
         <xliff:g id="day_of_week">%1$s</xliff:g>, <xliff:g id="date">%2$s</xliff:g>
@@ -33,4 +33,7 @@
         <xliff:g id="wind_speed">%1$.0f</xliff:g> mph, <xliff:g id="date">%2$s</xliff:g>
     </string>
     <string name="format_pressure">Pressure: <xliff:g id="pressure">"%.0f"</xliff:g> hPa</string>
+    <string name="fontLight">sans-serif-light</string>
+    <string name="fontCondensed">sans-serif-condensed</string>
+    <string name="weatherIcon">Weather icon</string>
 </resources>
