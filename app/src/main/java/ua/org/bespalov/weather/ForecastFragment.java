@@ -2,6 +2,10 @@ package ua.org.bespalov.weather;
 
 import android.app.Activity;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -24,6 +28,7 @@ import java.util.Date;
 import ua.org.bespalov.weather.data.WeatherContract;
 import ua.org.bespalov.weather.data.WeatherContract.WeatherEntry;
 import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
+import ua.org.bespalov.weather.sync.WeatherSyncAdapter;
 
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
     OnListItemClickedListener mCallback;
@@ -39,8 +44,9 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     private String mLocation;
     private int mPosition = ListView.INVALID_POSITION;
     private ListView mListView;
-    private Bundle mSavedInstanceState;
     private ForecastAdapter mForecastAdapter;
+    private AlarmManager alarmManager;
+    private PendingIntent pendingIntent;
 
     // For the forecast view we're showing only a small subset of the stored data.
     // Specify the columns we need.
@@ -106,7 +112,15 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public void onStart() {
         super.onStart();
-        updateWeather();
+        refreshWeather();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (mLocation != null && !mLocation.equals(Utility.getPreferredLocation(getActivity()))){
+            getLoaderManager().restartLoader(FORECAST_LOADER, null, this);
+        }
     }
 
     @Override
@@ -118,14 +132,13 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_refresh){
-            updateWeather();
+            refreshWeather();
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void updateWeather() {
-        FetchWeatherTask weatherTask = new FetchWeatherTask(getActivity());
-        weatherTask.execute(Utility.getPreferredLocation(getActivity()));
+    private void refreshWeather(){
+        WeatherSyncAdapter.syncImmediately(getActivity());
     }
 
     public void setUseTodayLayout (boolean useTodayLayout){
@@ -184,6 +197,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         data.moveToFirst();
         mForecastAdapter.swapCursor(data);
+        Log.d(LOG_TAG, "SWAPCURSOR?");
         if (mPosition != ListView.INVALID_POSITION){
             mListView.smoothScrollToPosition(mPosition);
             mListView.setItemChecked(mPosition, true);

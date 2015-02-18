@@ -1,16 +1,22 @@
-package ua.org.bespalov.weather;
+package ua.org.bespalov.weather.sync;
 
-import android.content.ContentProvider;
+import android.accounts.Account;
+import android.accounts.AccountManager;
+import android.content.AbstractThreadedSyncAdapter;
+import android.content.ContentProviderClient;
+import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.SyncRequest;
+import android.content.SyncResult;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.widget.ArrayAdapter;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -22,33 +28,56 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Vector;
 
+import ua.org.bespalov.weather.R;
+import ua.org.bespalov.weather.Utility;
 import ua.org.bespalov.weather.data.WeatherContract;
-import ua.org.bespalov.weather.data.WeatherContract.WeatherEntry;
-import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
 
-public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
-    private static final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
-    private final Context mContext;
+public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
+    private static final String LOG_TAG = WeatherSyncAdapter.class.getSimpleName();
+    private static int SYNC_INTERVAL=30;//60*180;
+    private static int SYNC_FLEXTIME=SYNC_INTERVAL/3;
 
-    public FetchWeatherTask(Context context){
-        mContext = context;
+    public WeatherSyncAdapter(Context context, boolean autoInitialize) {
+        super(context, autoInitialize);
     }
+
+    public static void syncImmediately(Context context) {
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+        bundle.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true);
+        ContentResolver.requestSync(getSyncAccount(context),
+                context.getString(R.string.content_authority), bundle);
+    }
+
+    private static Account getSyncAccount(Context context) {
+        AccountManager accountManager = (AccountManager) context.getSystemService(Context.ACCOUNT_SERVICE);
+        Account newAccount = new Account(context.getString(R.string.app_name), context.getString(R.string.sync_account_type));
+
+        if (null == accountManager.getPassword(newAccount)){
+            if (!accountManager.addAccountExplicitly(newAccount, "", null)){
+                return null;
+            }
+            onAccountCreated(newAccount, context);
+        }
+        return newAccount;
+    }
+
     @Override
-    protected Void doInBackground(String... params) {
+    public void onPerformSync(Account account, Bundle extras, String authority, ContentProviderClient provider, SyncResult syncResult) {
+        Log.d("WeatherSyncAdapter", "onPerformSync");
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
 
         String forecastJsonStr = null;
 
         String modeType = "json";
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        String unitsType = sharedPreferences.getString(mContext.getString(R.string.pref_units_key), mContext.getString(R.string.pref_units_metric));
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
+        String unitsType = sharedPreferences.getString(getContext().getString(R.string.pref_units_key), getContext().getString(R.string.pref_units_metric));
         int numDays = 14;
-        String locationQuery = params[0];
+        String locationQuery = Utility.getPreferredLocation(getContext());
 
         String FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast/daily?";
         String QUERY_PARAM = "q";
@@ -57,7 +86,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
         String DAYS_PARAM = "cnt";
         try {
             Uri uri = Uri.parse(FORECAST_BASE_URL).buildUpon()
-                    .appendQueryParameter(QUERY_PARAM, params[0])
+                    .appendQueryParameter(QUERY_PARAM, locationQuery)
                     .appendQueryParameter(MODE_PARAM, modeType)
                     .appendQueryParameter(UNITS_PARAM, unitsType)
                     .appendQueryParameter(DAYS_PARAM, Integer.toString(numDays))
@@ -71,7 +100,7 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
             InputStream inputStream = urlConnection.getInputStream();
             StringBuffer buffer = new StringBuffer();
             if (inputStream == null) {
-                return null;
+                return;
             }
             reader = new BufferedReader(new InputStreamReader(inputStream));
 
@@ -81,12 +110,12 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
             }
 
             if (buffer.length() == 0) {
-                return null;
+                return;
             }
             forecastJsonStr = buffer.toString();
         } catch (IOException e) {
             Log.e(LOG_TAG, "Error: ", e);
-            return null;
+            return;
         } finally {
             if (urlConnection != null) {
                 urlConnection.disconnect();
@@ -105,16 +134,9 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
-        return null;
+        return;
     }
 
-    /**
-     * Take the String representing the complete forecast in JSON Format and
-     * pull out the data we need to construct the Strings needed for the wireframes.
-     *
-     * Fortunately parsing is easy:  constructor takes the JSON string and converts it
-     * into an Object hierarchy for us.
-     */
     private void getWeatherDataFromJson(String forecastJsonStr, int numDays, String locationString)
             throws JSONException {
         final String OWM_LOC = "city";
@@ -193,24 +215,24 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
             ContentValues weatherValues = new ContentValues();
 
-            weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationID);
-            weatherValues.put(WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime*1000L)));
-            weatherValues.put(WeatherEntry.COLUMN_HUMIDITY, humidity);
-            weatherValues.put(WeatherEntry.COLUMN_PRESSURE, pressure);
-            weatherValues.put(WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
-            weatherValues.put(WeatherEntry.COLUMN_DEGREES, windDirection);
-            weatherValues.put(WeatherEntry.COLUMN_MAX_TEMP, high);
-            weatherValues.put(WeatherEntry.COLUMN_MIN_TEMP, low);
-            weatherValues.put(WeatherEntry.COLUMN_SHORT_DESC, description);
-            weatherValues.put(WeatherEntry.COLUMN_WEATHER_ID, weather_id);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LOC_KEY, locationID);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime*1000L)));
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_HUMIDITY, humidity);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE, pressure);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DEGREES, windDirection);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP, high);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP, low);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC, description);
+            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID, weather_id);
 
             cVVector.add(weatherValues);
 
             if (cVVector.size() > 0) {
                 ContentValues[] cvArray = new ContentValues[cVVector.size()];
                 cVVector.toArray(cvArray);
-                int rowsInserted = mContext.getContentResolver()
-                        .bulkInsert(WeatherEntry.CONTENT_URI, cvArray);
+                int rowsInserted = getContext().getContentResolver()
+                        .bulkInsert(WeatherContract.WeatherEntry.CONTENT_URI, cvArray);
                 Log.v(LOG_TAG, "inserted " + rowsInserted + " rows of weather data");
             }
         }
@@ -218,27 +240,49 @@ public class FetchWeatherTask extends AsyncTask<String, Void, Void> {
 
     private long addLocation (String locationSetting, String locName, double lat, double lon){
         Log.v(LOG_TAG, "inserting " + locName + ", with coord" + lat + ", " + lon);
-        Cursor cursor = mContext.getContentResolver().query(
-                LocationEntry.CONTENT_URI,
-                new String[]{LocationEntry._ID},
-                LocationEntry.COLUMN_LOC_SETTING + " = ?",
+        Cursor cursor = getContext().getContentResolver().query(
+                WeatherContract.LocationEntry.CONTENT_URI,
+                new String[]{WeatherContract.LocationEntry._ID},
+                WeatherContract.LocationEntry.COLUMN_LOC_SETTING + " = ?",
                 new String[]{locationSetting},
                 null
         );
 
         if (cursor.moveToFirst()){
             Log.v(LOG_TAG, "Found it in database!");
-            int locationIndex = cursor.getColumnIndex(LocationEntry._ID);
+            int locationIndex = cursor.getColumnIndex(WeatherContract.LocationEntry._ID);
             return cursor.getLong(locationIndex);
         } else {
             Log.v(LOG_TAG, "Didn't find it in database, inserting now!");
             ContentValues locationValues = new ContentValues();
-            locationValues.put(LocationEntry.COLUMN_LOC_SETTING, locationSetting);
-            locationValues.put(LocationEntry.COLUMN_LOC_NAME, locName);
-            locationValues.put(LocationEntry.COLUMN_LOC_LAT, lat);
-            locationValues.put(LocationEntry.COLUMN_LOC_LONG, lon);
-            Uri locationInsertUri = mContext.getContentResolver().insert(LocationEntry.CONTENT_URI, locationValues);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_SETTING, locationSetting);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_NAME, locName);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_LAT, lat);
+            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_LONG, lon);
+            Uri locationInsertUri = getContext().getContentResolver().insert(WeatherContract.LocationEntry.CONTENT_URI, locationValues);
             return ContentUris.parseId(locationInsertUri);
         }
+    }
+
+    private static void configurePeriodicSync (Context context, int syncInterval, int flexTime){
+        Account account = getSyncAccount(context);
+        String authority = context.getString(R.string.content_authority);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT){
+            SyncRequest request = new SyncRequest.Builder().syncPeriodic(syncInterval, flexTime).
+                    setSyncAdapter(account, authority).setExtras(new Bundle()).build();
+            ContentResolver.requestSync(request);
+        } else {
+            ContentResolver.addPeriodicSync(account, authority, new Bundle(), syncInterval);
+        }
+    }
+
+    private static void onAccountCreated(Account newAccount, Context context) {
+        WeatherSyncAdapter.configurePeriodicSync(context, SYNC_INTERVAL, SYNC_FLEXTIME);
+        ContentResolver.setSyncAutomatically(newAccount, context.getString(R.string.content_authority), true);
+        syncImmediately(context);
+    }
+
+    public static void initializeSyncAdapter(Context context) {
+        getSyncAccount(context);
     }
 }

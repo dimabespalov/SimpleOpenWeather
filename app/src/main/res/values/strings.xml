@@ -36,4 +36,6 @@
     <string name="fontLight">sans-serif-light</string>
     <string name="fontCondensed">sans-serif-condensed</string>
     <string name="weatherIcon">Weather icon</string>
+    <string name="sync_account_type">weather.bespalov.org.ua</string>
+    <string name="content_authority">ua.org.bespalov.weather</string>
 </resources>

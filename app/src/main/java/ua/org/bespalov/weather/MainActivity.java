@@ -10,8 +10,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-public class MainActivity extends ActionBarActivity implements ForecastFragment.OnListItemClickedListener{
+import ua.org.bespalov.weather.sync.WeatherSyncAdapter;
 
+public class MainActivity extends ActionBarActivity implements ForecastFragment.OnListItemClickedListener{
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
     boolean mTwoPane;
     @Override
@@ -31,6 +32,8 @@ public class MainActivity extends ActionBarActivity implements ForecastFragment.
         ForecastFragment forecastFragment = ((ForecastFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.fragment_forecast));
         forecastFragment.setUseTodayLayout(!mTwoPane);
+
+        WeatherSyncAdapter.initializeSyncAdapter(this);
     }
 
     @Override
