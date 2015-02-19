@@ -309,6 +309,7 @@ public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
             cVVector.add(weatherValues);
 
         }
+        
         if (cVVector.size() > 0) {
             ContentValues[] cvArray = new ContentValues[cVVector.size()];
             cVVector.toArray(cvArray);
@@ -316,6 +317,21 @@ public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
                     .bulkInsert(WeatherEntry.CONTENT_URI, cvArray);
             Log.v(LOG_TAG, "inserted " + rowsInserted + " rows of weather data");
         }
+        
+        int rowsDeleted = deleteOldData();
+        Log.v(LOG_TAG, "deleted " + rowsDeleted + " rows of weather data");
+    }
+
+    private int deleteOldData() {
+        Calendar calendar = Calendar.getInstance(Locale.getDefault());
+        calendar.roll(Calendar.DATE, -1);
+        String dateString = WeatherContract.getDbDateString(calendar.getTime());
+        Log.v(LOG_TAG, "THIS DATE IS "+ dateString);
+        return getContext().getContentResolver().delete(
+                WeatherEntry.CONTENT_URI,
+                WeatherEntry.COLUMN_DATETEXT + " <= ?",
+                new String[]{dateString}
+        );
     }
 
     private long addLocation (String locationSetting, String locName, double lat, double lon){
