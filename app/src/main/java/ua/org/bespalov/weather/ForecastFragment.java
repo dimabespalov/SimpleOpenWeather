@@ -2,9 +2,12 @@ package ua.org.bespalov.weather;
 
 import android.app.Activity;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
@@ -57,7 +60,9 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             WeatherEntry.COLUMN_MAX_TEMP,
             WeatherEntry.COLUMN_MIN_TEMP,
             WeatherEntry.COLUMN_WEATHER_ID,
-            LocationEntry.COLUMN_LOC_SETTING
+            LocationEntry.COLUMN_LOC_SETTING,
+            LocationEntry.COLUMN_LOC_LAT,
+            LocationEntry.COLUMN_LOC_LONG
     };
 
     // These indices are tied to FORECAST_COLUMNS. If FORECAST_COLUMNS changes, these
@@ -68,6 +73,8 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public static final int COL_WEATHER_MIN_TEMP = 4;
     public static final int COL_WEATHER_ID = 5;
     public static final int COL_LOCATION_SETTING = 6;
+    public static final int COL_LOCATION_LAT = 7;
+    public static final int COL_LOCATION_LONG = 8;
 
     public ForecastFragment() {
     }
@@ -125,10 +132,34 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_refresh){
-            refreshWeather();
+//        if (id == R.id.action_refresh){
+//            refreshWeather();
+//        }
+        if (id == R.id.action_location_map) {
+            openPreferredLocationInMap();
+            return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void openPreferredLocationInMap (){
+        if (null != mForecastAdapter){
+            Cursor cursor = mForecastAdapter.getCursor();
+            if (null != cursor) {
+                cursor.moveToFirst();
+                String posLat = cursor.getString(COL_LOCATION_LAT);
+                String posLong = cursor.getString(COL_LOCATION_LONG);
+                Uri geoLocation = Uri.parse("geo:" + posLat + "," + posLong);
+                Intent locationIntent = new Intent(Intent.ACTION_VIEW);
+                locationIntent.setData(geoLocation);
+                if (locationIntent.resolveActivity(getActivity().getPackageManager()) != null){
+                    Log.d(LOG_TAG, "Call " + geoLocation);
+                    startActivity(locationIntent);
+                } else {
+                    Log.d(LOG_TAG, "Could not call " + geoLocation + ", no intent");
+                }
+            }
+        }
     }
 
     private void refreshWeather(){
