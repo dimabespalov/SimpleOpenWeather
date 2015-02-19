@@ -2,12 +2,16 @@ package ua.org.bespalov.weather.sync;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.AbstractThreadedSyncAdapter;
 import android.content.ContentProviderClient;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SyncRequest;
 import android.content.SyncResult;
@@ -16,6 +20,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -28,20 +34,92 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Vector;
 
+import ua.org.bespalov.weather.MainActivity;
 import ua.org.bespalov.weather.R;
 import ua.org.bespalov.weather.Utility;
 import ua.org.bespalov.weather.data.WeatherContract;
+import ua.org.bespalov.weather.data.WeatherContract.WeatherEntry;
+import ua.org.bespalov.weather.data.WeatherContract.LocationEntry;
 
 public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
     private static final String LOG_TAG = WeatherSyncAdapter.class.getSimpleName();
-    private static int SYNC_INTERVAL=30;//60*180;
-    private static int SYNC_FLEXTIME=SYNC_INTERVAL/3;
+    private static int SYNC_INTERVAL = 60*180;
+    private static int SYNC_FLEXTIME = SYNC_INTERVAL/3;
+    private static int DAY_IN_MILLIS = 1000*60*60*24;
+    private static int WEATHER_NOTIFICATION_ID = 3004;
+
+    private static final String[] NOTIFY_WEATHER_PROJECTION = new String[] {
+            WeatherEntry.COLUMN_WEATHER_ID,
+            WeatherEntry.COLUMN_MAX_TEMP,
+            WeatherEntry.COLUMN_MIN_TEMP,
+            WeatherEntry.COLUMN_SHORT_DESC
+    };
+
+    private static final int INDEX_WEATHER_ID = 0;
+    private static final int INDEX_MAX_TEMP = 1;
+    private static final int INDEX_MIN_TEMP = 2;
+    private static final int INDEX_SHORT_DESC = 3;
 
     public WeatherSyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
+    }
+
+    private void notifyWeather(){
+        Context context = getContext();
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+        String lastNotificationKey = context.getString(R.string.pref_last_notification);
+        long lastSync = sharedPreferences.getLong(lastNotificationKey, 0);
+
+        if (System.currentTimeMillis() - lastSync >= DAY_IN_MILLIS){
+            String locationQuery = Utility.getPreferredLocation(context);
+            Uri weatherUri = WeatherEntry.buildWeatherLocationWithDate(locationQuery, WeatherContract.getDbDateString(new Date()));
+
+            Cursor cursor = context.getContentResolver().query(
+                    weatherUri,
+                    NOTIFY_WEATHER_PROJECTION,
+                    null,
+                    null,
+                    null
+            );
+            if (cursor.moveToFirst()){
+                int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+                double high = cursor.getDouble(INDEX_MAX_TEMP);
+                double low = cursor.getDouble(INDEX_MIN_TEMP);
+                String desc = cursor.getString(INDEX_SHORT_DESC);
+
+                int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
+                String title = context.getString(R.string.app_name);
+                boolean isMetric = Utility.isMetric(context);
+
+                String contentText = String.format(context.getString(R.string.format_notification),
+                        desc,
+                        Utility.formatTemperature(context, high, isMetric),
+                        Utility.formatTemperature(context, low, isMetric)
+                );
+
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putLong(lastNotificationKey, System.currentTimeMillis());
+                editor.commit();
+
+                Intent intent = new Intent(context, MainActivity.class);
+                TaskStackBuilder taskStackBuilder = TaskStackBuilder.create(context);
+                taskStackBuilder.addNextIntent(intent);
+                PendingIntent pendingIntent = taskStackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+                Notification notification = new NotificationCompat.Builder(context)
+                        .setSmallIcon(iconId)
+                        .setContentTitle(title)
+                        .setContentText(contentText)
+                        .addAction(iconId, title, pendingIntent).build();
+                NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                notificationManager.notify(WEATHER_NOTIFICATION_ID, notification);
+            }
+
+        }
     }
 
     public static void syncImmediately(Context context) {
@@ -106,7 +184,7 @@ public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
 
             String line;
             while ((line = reader.readLine()) != null) {
-                buffer.append(line + "\n");
+                buffer.append(line).append("\n");
             }
 
             if (buffer.length() == 0) {
@@ -130,11 +208,13 @@ public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
         }
         try {
             getWeatherDataFromJson(forecastJsonStr, numDays, locationQuery);
+            if (sharedPreferences.getBoolean(getContext().getString(R.string.pref_notifications_key), true)){
+                notifyWeather();
+            }
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
         }
-        return;
     }
 
     private void getWeatherDataFromJson(String forecastJsonStr, int numDays, String locationString)
@@ -215,51 +295,51 @@ public class WeatherSyncAdapter extends AbstractThreadedSyncAdapter {
 
             ContentValues weatherValues = new ContentValues();
 
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LOC_KEY, locationID);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime*1000L)));
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_HUMIDITY, humidity);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE, pressure);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DEGREES, windDirection);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP, high);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP, low);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_SHORT_DESC, description);
-            weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WEATHER_ID, weather_id);
+            weatherValues.put(WeatherEntry.COLUMN_LOC_KEY, locationID);
+            weatherValues.put(WeatherEntry.COLUMN_DATETEXT, WeatherContract.getDbDateString(new Date(dateTime * 1000L)));
+            weatherValues.put(WeatherEntry.COLUMN_HUMIDITY, humidity);
+            weatherValues.put(WeatherEntry.COLUMN_PRESSURE, pressure);
+            weatherValues.put(WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
+            weatherValues.put(WeatherEntry.COLUMN_DEGREES, windDirection);
+            weatherValues.put(WeatherEntry.COLUMN_MAX_TEMP, high);
+            weatherValues.put(WeatherEntry.COLUMN_MIN_TEMP, low);
+            weatherValues.put(WeatherEntry.COLUMN_SHORT_DESC, description);
+            weatherValues.put(WeatherEntry.COLUMN_WEATHER_ID, weather_id);
 
             cVVector.add(weatherValues);
 
-            if (cVVector.size() > 0) {
-                ContentValues[] cvArray = new ContentValues[cVVector.size()];
-                cVVector.toArray(cvArray);
-                int rowsInserted = getContext().getContentResolver()
-                        .bulkInsert(WeatherContract.WeatherEntry.CONTENT_URI, cvArray);
-                Log.v(LOG_TAG, "inserted " + rowsInserted + " rows of weather data");
-            }
+        }
+        if (cVVector.size() > 0) {
+            ContentValues[] cvArray = new ContentValues[cVVector.size()];
+            cVVector.toArray(cvArray);
+            int rowsInserted = getContext().getContentResolver()
+                    .bulkInsert(WeatherEntry.CONTENT_URI, cvArray);
+            Log.v(LOG_TAG, "inserted " + rowsInserted + " rows of weather data");
         }
     }
 
     private long addLocation (String locationSetting, String locName, double lat, double lon){
         Log.v(LOG_TAG, "inserting " + locName + ", with coord" + lat + ", " + lon);
         Cursor cursor = getContext().getContentResolver().query(
-                WeatherContract.LocationEntry.CONTENT_URI,
-                new String[]{WeatherContract.LocationEntry._ID},
-                WeatherContract.LocationEntry.COLUMN_LOC_SETTING + " = ?",
+                LocationEntry.CONTENT_URI,
+                new String[]{LocationEntry._ID},
+                LocationEntry.COLUMN_LOC_SETTING + " = ?",
                 new String[]{locationSetting},
                 null
         );
 
         if (cursor.moveToFirst()){
             Log.v(LOG_TAG, "Found it in database!");
-            int locationIndex = cursor.getColumnIndex(WeatherContract.LocationEntry._ID);
+            int locationIndex = cursor.getColumnIndex(LocationEntry._ID);
             return cursor.getLong(locationIndex);
         } else {
             Log.v(LOG_TAG, "Didn't find it in database, inserting now!");
             ContentValues locationValues = new ContentValues();
-            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_SETTING, locationSetting);
-            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_NAME, locName);
-            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_LAT, lat);
-            locationValues.put(WeatherContract.LocationEntry.COLUMN_LOC_LONG, lon);
-            Uri locationInsertUri = getContext().getContentResolver().insert(WeatherContract.LocationEntry.CONTENT_URI, locationValues);
+            locationValues.put(LocationEntry.COLUMN_LOC_SETTING, locationSetting);
+            locationValues.put(LocationEntry.COLUMN_LOC_NAME, locName);
+            locationValues.put(LocationEntry.COLUMN_LOC_LAT, lat);
+            locationValues.put(LocationEntry.COLUMN_LOC_LONG, lon);
+            Uri locationInsertUri = getContext().getContentResolver().insert(LocationEntry.CONTENT_URI, locationValues);
             return ContentUris.parseId(locationInsertUri);
         }
     }

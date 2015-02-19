@@ -13,4 +13,11 @@
         android:entries="@array/pref_units_entries"
         android:entryValues="@array/pref_units_values"
         />
+    <SwitchPreference
+        android:title="@string/pref_notifications"
+        android:key="@string/pref_notifications_key"
+        android:defaultValue="true"
+        android:summaryOn="@string/pref_notifications_desc"
+        android:summaryOff="@string/pref_notifications_desc"/>
+
 </PreferenceScreen>

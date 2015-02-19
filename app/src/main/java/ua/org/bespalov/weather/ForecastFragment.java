@@ -2,10 +2,6 @@ package ua.org.bespalov.weather;
 
 import android.app.Activity;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -45,8 +41,6 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     private int mPosition = ListView.INVALID_POSITION;
     private ListView mListView;
     private ForecastAdapter mForecastAdapter;
-    private AlarmManager alarmManager;
-    private PendingIntent pendingIntent;
 
     // For the forecast view we're showing only a small subset of the stored data.
     // Specify the columns we need.
@@ -197,7 +191,6 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
         data.moveToFirst();
         mForecastAdapter.swapCursor(data);
-        Log.d(LOG_TAG, "SWAPCURSOR?");
         if (mPosition != ListView.INVALID_POSITION){
             mListView.smoothScrollToPosition(mPosition);
             mListView.setItemChecked(mPosition, true);

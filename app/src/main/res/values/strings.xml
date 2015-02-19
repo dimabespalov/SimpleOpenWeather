@@ -14,6 +14,9 @@
     <string name="pref_units_key" translatable="false">units</string>
     <string name="pref_units_metric">Metric</string>
     <string name="pref_units_imperial">Imperial</string>
+    <string name="pref_notifications">Notifications</string>
+    <string name="pref_notifications_key">notifications</string>
+    <string name="pref_notifications_desc">Send notifications once per day</string>
     <string name="action_showlocation_map">Show location</string>
     <string name="action_share">Share</string>
     <!-- Date label when displaying today's weather forecast [CHAR LIMIT=20] -->
@@ -38,4 +41,11 @@
     <string name="weatherIcon">Weather icon</string>
     <string name="sync_account_type">weather.bespalov.org.ua</string>
     <string name="content_authority">ua.org.bespalov.weather</string>
+    <string name="format_notification">
+        Forecast: <xliff:g id="condition">%1$s</xliff:g>
+        High: <xliff:g id="high">%2$s</xliff:g>
+        Low: <xliff:g id="low">%3$s</xliff:g>
+    </string>
+    <string name="pref_last_notification">last_notification</string>
+    <string name="title_activity_settings">Settings</string>
 </resources>
